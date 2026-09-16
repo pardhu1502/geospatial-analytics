@@ -216,6 +216,7 @@ export default function ProjectMap() {
       mapRef.current = null;
       styleLoadedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-render site polygons whenever the project data changes.
@@ -224,6 +225,7 @@ export default function ProjectMap() {
     if (styleLoadedRef.current) {
       renderSites(project.sites);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
 
   const cancelPendingSite = () => {
