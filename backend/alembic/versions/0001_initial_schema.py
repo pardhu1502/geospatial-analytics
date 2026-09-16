@@ -25,7 +25,7 @@ def upgrade() -> None:
 
     op.create_table(
         "users",
-        sa.Column("id", sa.Integer(), primary_key=True, index=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("email", sa.String(length=255), nullable=False),
         sa.Column("hashed_password", sa.String(length=255), nullable=False),
         sa.Column("full_name", sa.String(length=255), nullable=False),
@@ -41,7 +41,7 @@ def upgrade() -> None:
 
     op.create_table(
         "projects",
-        sa.Column("id", sa.Integer(), primary_key=True, index=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column(
@@ -62,7 +62,7 @@ def upgrade() -> None:
 
     op.create_table(
         "sites",
-        sa.Column("id", sa.Integer(), primary_key=True, index=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column(
             "project_id",
             sa.Integer(),
@@ -94,7 +94,7 @@ def upgrade() -> None:
 
     op.create_table(
         "site_metrics",
-        sa.Column("id", sa.Integer(), primary_key=True, index=True),
+        sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column(
             "site_id",
             sa.Integer(),
