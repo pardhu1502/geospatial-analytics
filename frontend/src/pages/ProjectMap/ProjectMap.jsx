@@ -8,6 +8,14 @@ import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
+// A missing or placeholder token makes Mapbox reject every tile request with
+// a 401, and because those error responses carry no CORS headers the browser
+// surfaces it as an opaque "CORS error" instead of an auth failure. Detect it
+// up front so we can show something actionable rather than a red herring.
+function isUsableToken(token) {
+  return Boolean(token) && token.startsWith('pk.');
+}
+
 // Default view centered on the Western Ghats, India (see ARCHITECTURE.md seed data notes).
 const DEFAULT_CENTER = [76.5, 11.5];
 const DEFAULT_ZOOM = 8;
@@ -80,6 +88,11 @@ export default function ProjectMap() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
+  const [mapError, setMapError] = useState(
+    isUsableToken(MAPBOX_TOKEN)
+      ? ''
+      : 'No Mapbox access token configured. Set VITE_MAPBOX_TOKEN in frontend/.env to a token starting with "pk.", then restart the dev server.'
+  );
   const [pendingGeometry, setPendingGeometry] = useState(null);
   const [savingSite, setSavingSite] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -145,6 +158,9 @@ export default function ProjectMap() {
   // Initialize the Mapbox map + Draw control once on mount.
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
+    // Don't even construct the map without a usable token — doing so just
+    // produces a wall of misleading CORS errors in the console.
+    if (!isUsableToken(MAPBOX_TOKEN)) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -155,6 +171,19 @@ export default function ProjectMap() {
       zoom: DEFAULT_ZOOM,
     });
     mapRef.current = map;
+
+    // Mapbox reports tile/style auth failures through this event rather than
+    // throwing, so surface them instead of letting them vanish into the console.
+    map.on('error', (e) => {
+      const status = e?.error?.status;
+      if (status === 401 || status === 403) {
+        setMapError(
+          'Mapbox rejected the access token (HTTP ' +
+            status +
+            '). Check VITE_MAPBOX_TOKEN in frontend/.env, then restart the dev server.'
+        );
+      }
+    });
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
@@ -273,12 +302,31 @@ export default function ProjectMap() {
         </div>
       )}
 
+      {mapError && (
+        <div className="page-container" style={{ paddingTop: '1rem', paddingBottom: 0 }}>
+          <div className="error-banner">{mapError}</div>
+        </div>
+      )}
+
       <div className="map-container">
         <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-        <div className="map-hint">
-          Use the polygon tool (top-left) to draw a new site boundary. Click an existing polygon to
-          view its details.
-        </div>
+        {mapError ? (
+          <div className="map-placeholder">
+            <p>Map unavailable</p>
+            <p className="map-placeholder-hint">
+              Get a free token at{' '}
+              <a href="https://account.mapbox.com/access-tokens/" target="_blank" rel="noreferrer">
+                account.mapbox.com/access-tokens
+              </a>
+              . Everything else on this page still works.
+            </p>
+          </div>
+        ) : (
+          <div className="map-hint">
+            Use the polygon tool (top-left) to draw a new site boundary. Click an existing polygon
+            to view its details.
+          </div>
+        )}
       </div>
 
       {pendingGeometry && (
