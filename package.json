@@ -1,0 +1,23 @@
+{
+  "name": "darukaa-hackathon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repo-root tooling for Darukaa.Earth (Husky + lint-staged pre-commit hooks). See frontend/ and backend/ for the actual apps.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "frontend/**/*.{js,jsx}": [
+      "npm --prefix frontend run format",
+      "npm --prefix frontend run lint -- --fix"
+    ],
+    "backend/**/*.py": [
+      "black",
+      "ruff check --fix"
+    ]
+  }
+}
