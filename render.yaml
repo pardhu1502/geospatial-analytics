@@ -1,0 +1,55 @@
+# Render Blueprint for Darukaa.Earth
+# https://render.com/docs/blueprint-spec
+#
+# NOTE: Render's managed Postgres does NOT have PostGIS enabled by default, and
+# Blueprints cannot run arbitrary SQL against the created database. After the first
+# deploy, connect to the `darukaa-db` instance (e.g. via `psql` using the External
+# Connection String from the Render dashboard) and run once:
+#     CREATE EXTENSION IF NOT EXISTS postgis;
+# Alternatively, the Alembic migration in backend/alembic already includes this
+# statement, so simply running `alembic upgrade head` against the Render database
+# (e.g. from a Render Shell or locally with DATABASE_URL pointed at it) will enable
+# PostGIS as part of the first migration.
+
+databases:
+  - name: darukaa-db
+    databaseName: darukaa
+    user: darukaa
+    plan: free
+
+services:
+  - type: web
+    name: darukaa-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: darukaa-db
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: CORS_ORIGINS
+        value: https://darukaa-frontend.onrender.com
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+  - type: static
+    name: darukaa-frontend
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://darukaa-backend.onrender.com
+      - key: VITE_MAPBOX_TOKEN
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
