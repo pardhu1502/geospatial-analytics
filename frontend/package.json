@@ -16,7 +16,9 @@
     "react-router-dom": "^6.26.2",
     "axios": "^1.7.7",
     "mapbox-gl": "^3.6.0",
-    "@mapbox/mapbox-gl-draw": "^1.4.3"
+    "@mapbox/mapbox-gl-draw": "^1.4.3",
+    "highcharts": "^11.4.8",
+    "highcharts-react-official": "^3.2.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

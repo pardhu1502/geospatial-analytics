@@ -1,0 +1,99 @@
+/* Scoped styles for the SiteDetail analytics section. Reuses index.css tokens
+   (--color-surface, --color-border, --color-text, --color-text-muted, --radius,
+   --shadow-sm) and the existing .stat-row / .stat-tile / .card / .btn / .empty-state
+   / .error-banner classes; only what's new to this component lives here. */
+
+.site-analytics-charts {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.chart-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--color-forest-dark);
+}
+
+.chart-body {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Small multiples: biodiversity + NDVI side by side on wide viewports, stacked on
+   narrow ones. min-width: 0 keeps Highcharts' SVG from forcing the grid track wider
+   than its column (the classic "chart overflows its card" bug). */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.charts-grid .chart-card,
+.charts-grid .chart-card .chart-body {
+  min-width: 0;
+}
+
+/* Trend badge: icon glyph + text label, never color alone (see chartTheme.js
+   TREND_COLORS / TrendBadge). */
+.trend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.trend-badge-glyph {
+  font-size: 0.85em;
+}
+
+.table-toggle {
+  align-self: flex-start;
+}
+
+.table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 0.6rem 1rem;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.metrics-table th:first-child,
+.metrics-table td:first-child {
+  text-align: left;
+}
+
+.metrics-table thead th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metrics-table td {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
