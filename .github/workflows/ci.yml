@@ -39,6 +39,23 @@ jobs:
   backend:
     name: Backend (lint + test)
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:15-3.4
+        env:
+          POSTGRES_DB: darukaa
+          POSTGRES_USER: darukaa
+          POSTGRES_PASSWORD: darukaa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U darukaa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg2://darukaa:darukaa@localhost:5432/darukaa
+      JWT_SECRET_KEY: ci-test-secret-key
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +70,10 @@ jobs:
 
       - name: Lint (ruff)
         run: ruff check backend/app
+
+      - name: Apply migrations
+        working-directory: backend
+        run: alembic upgrade head
 
       - name: Test (pytest)
         run: pytest backend/tests --no-header -q
