@@ -216,3 +216,128 @@ def test_project_and_site_are_not_visible_to_other_users(client: TestClient):
     # And a fully unauthenticated caller gets 401, not 404 or 200.
     assert client.get(f"/projects/{project_id}").status_code == 401
     assert client.get(f"/sites/{site_id}").status_code == 401
+
+
+def test_update_project_patches_only_supplied_fields(client: TestClient):
+    headers = _auth_headers(client)
+    created = client.post(
+        "/projects",
+        json={"name": "Original name", "description": "Original description"},
+        headers=headers,
+    ).json()
+
+    # Renaming must not wipe the description that wasn't part of the payload.
+    resp = client.patch(
+        f"/projects/{created['id']}", json={"name": "New name"}, headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["name"] == "New name"
+    assert body["description"] == "Original description"
+
+    # Explicit null clears it, which `exclude_unset` must still allow through.
+    resp = client.patch(
+        f"/projects/{created['id']}", json={"description": None}, headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["description"] is None
+    assert resp.json()["name"] == "New name"
+
+
+def test_delete_project_cascades_to_sites(client: TestClient):
+    headers = _auth_headers(client)
+    project = client.post(
+        "/projects", json={"name": "To delete"}, headers=headers
+    ).json()
+    site = client.post(
+        f"/projects/{project['id']}/sites",
+        json={
+            "name": "Doomed site",
+            "site_type": "carbon",
+            "geom": SAMPLE_POLYGON_GEOJSON,
+        },
+        headers=headers,
+    ).json()
+
+    resp = client.delete(f"/projects/{project['id']}", headers=headers)
+    assert resp.status_code == 204, resp.text
+
+    # Project and its cascaded site are both unreachable afterwards.
+    assert client.get(f"/projects/{project['id']}", headers=headers).status_code == 404
+    assert client.get(f"/sites/{site['id']}", headers=headers).status_code == 404
+
+
+def test_cannot_update_or_delete_another_users_project(client: TestClient):
+    owner_headers = _auth_headers(client)
+    project = client.post(
+        "/projects", json={"name": "Private project"}, headers=owner_headers
+    ).json()
+
+    intruder_headers = _auth_headers(client)
+    assert (
+        client.patch(
+            f"/projects/{project['id']}",
+            json={"name": "hacked"},
+            headers=intruder_headers,
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            f"/projects/{project['id']}", headers=intruder_headers
+        ).status_code
+        == 404
+    )
+
+    # Still intact and unchanged for its real owner.
+    resp = client.get(f"/projects/{project['id']}", headers=owner_headers)
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Private project"
+
+
+def test_bulk_delete_only_removes_own_projects(client: TestClient):
+    owner_headers = _auth_headers(client)
+    keep = client.post("/projects", json={"name": "Keep"}, headers=owner_headers).json()
+    drop_a = client.post(
+        "/projects", json={"name": "Drop A"}, headers=owner_headers
+    ).json()
+    drop_b = client.post(
+        "/projects", json={"name": "Drop B"}, headers=owner_headers
+    ).json()
+
+    other_headers = _auth_headers(client)
+    foreign = client.post(
+        "/projects", json={"name": "Someone else's"}, headers=other_headers
+    ).json()
+
+    # Mix in a foreign id and a nonexistent one: both are skipped, not fatal.
+    resp = client.post(
+        "/projects/bulk-delete",
+        json={"ids": [drop_a["id"], drop_b["id"], foreign["id"], 99_999_999]},
+        headers=owner_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"deleted": 2, "requested": 4}
+
+    assert (
+        client.get(f"/projects/{drop_a['id']}", headers=owner_headers).status_code
+        == 404
+    )
+    assert (
+        client.get(f"/projects/{drop_b['id']}", headers=owner_headers).status_code
+        == 404
+    )
+    assert (
+        client.get(f"/projects/{keep['id']}", headers=owner_headers).status_code == 200
+    )
+    # The other user's project survived someone else's bulk delete.
+    assert (
+        client.get(f"/projects/{foreign['id']}", headers=other_headers).status_code
+        == 200
+    )
+
+
+def test_bulk_delete_rejects_empty_id_list(client: TestClient):
+    headers = _auth_headers(client)
+    resp = client.post("/projects/bulk-delete", json={"ids": []}, headers=headers)
+    assert resp.status_code == 422

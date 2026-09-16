@@ -9,7 +9,14 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.site import Site
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectDetail, ProjectOut
+from app.schemas.project import (
+    BulkDeleteResult,
+    ProjectBulkDelete,
+    ProjectCreate,
+    ProjectDetail,
+    ProjectOut,
+    ProjectUpdate,
+)
 from app.schemas.site import SiteCreate, SiteNested, SiteOut
 
 router = APIRouter(tags=["projects"])
@@ -112,6 +119,71 @@ def get_project(
         site_count=len(sites),
         sites=sites,
     )
+
+
+@router.patch("/projects/{project_id}", response_model=ProjectOut)
+def update_project(
+    project_id: int,
+    payload: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ProjectOut:
+    project = _get_owned_project(project_id, db, current_user)
+
+    # exclude_unset so omitting a field leaves it untouched, while
+    # explicitly sending `"description": null` still clears it.
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(project, field, value)
+
+    db.commit()
+    db.refresh(project)
+
+    site_count = (
+        db.query(func.count(Site.id)).filter(Site.project_id == project.id).scalar()
+    )
+    return ProjectOut(
+        id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        site_count=site_count or 0,
+    )
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    project = _get_owned_project(project_id, db, current_user)
+    # Sites (and their metrics) go with it via the relationship cascade
+    # and the ON DELETE CASCADE foreign keys.
+    db.delete(project)
+    db.commit()
+
+
+@router.post("/projects/bulk-delete", response_model=BulkDeleteResult)
+def bulk_delete_projects(
+    payload: ProjectBulkDelete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BulkDeleteResult:
+    requested_ids = set(payload.ids)
+
+    # Only ever touch projects this user owns; unknown/foreign ids are
+    # skipped rather than 404-ing the whole batch.
+    projects = (
+        db.query(Project)
+        .filter(Project.id.in_(requested_ids), Project.owner_id == current_user.id)
+        .all()
+    )
+    for project in projects:
+        db.delete(project)
+    db.commit()
+
+    return BulkDeleteResult(deleted=len(projects), requested=len(requested_ids))
 
 
 @router.post(

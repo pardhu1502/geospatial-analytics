@@ -81,6 +81,9 @@ All endpoints under `http://localhost:8000`. JWT auth via `Authorization: Bearer
 - `GET /projects` → list projects owned by current user (with nested site count)
 - `POST /projects` `{name, description}` → created project
 - `GET /projects/{project_id}` → project detail with nested `sites` (id, name, geom as GeoJSON, site_type)
+- `PATCH /projects/{project_id}` `{name?, description?}` → updated project. Partial update: omitted fields are left untouched, an explicit `"description": null` clears it.
+- `DELETE /projects/{project_id}` → `204 No Content`. Cascades to the project's sites and their metrics.
+- `POST /projects/bulk-delete` `{ids: [int, ...]}` → `{deleted, requested}`. Ids that don't exist or belong to another user are skipped rather than failing the batch, so a partially-stale UI selection still deletes what it legitimately can.
 - `POST /projects/{project_id}/sites` `{name, site_type, geom: GeoJSON Polygon}` → created site
 - `GET /sites/{site_id}` → site detail (incl. geom as GeoJSON, area_hectares)
 - `GET /sites/{site_id}/metrics` → list of `{date, carbon_tons, biodiversity_index, ndvi}` sorted by date, for charting
