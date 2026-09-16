@@ -1,0 +1,27 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.env
+npm-debug.log*
+
+# Python / backend
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.venv/
+backend/venv/
+backend/.env
+backend/*.egg-info/
+*.pyc
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Env files (keep .env.example tracked)
+.env
+!.env.example
+
+# Docker
+postgres_data/
