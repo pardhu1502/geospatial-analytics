@@ -11,3 +11,10 @@ passlib[bcrypt]
 # Pinned: passlib 1.7.4's bcrypt backend probes `bcrypt.__about__.__version__`,
 # which was removed in bcrypt>=4.1, breaking password hashing at runtime.
 bcrypt<4.1.0
+python-jose[cryptography]
+# Required by FastAPI's OAuth2PasswordBearer/OpenAPI docs "Authorize" UI
+# even though our actual /auth/login endpoint takes a JSON body.
+python-multipart
+email-validator
+# Geodesic-accurate polygon area calculation (see app/core/geo.py).
+pyproj
