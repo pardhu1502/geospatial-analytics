@@ -2,14 +2,14 @@
 # https://render.com/docs/blueprint-spec
 #
 # NOTE: Render's managed Postgres does NOT have PostGIS enabled by default, and
-# Blueprints cannot run arbitrary SQL against the created database. After the first
-# deploy, connect to the `darukaa-db` instance (e.g. via `psql` using the External
-# Connection String from the Render dashboard) and run once:
-#     CREATE EXTENSION IF NOT EXISTS postgis;
-# Alternatively, the Alembic migration in backend/alembic already includes this
-# statement, so simply running `alembic upgrade head` against the Render database
-# (e.g. from a Render Shell or locally with DATABASE_URL pointed at it) will enable
-# PostGIS as part of the first migration.
+# Blueprints cannot run arbitrary SQL against the created database. The Alembic
+# migration in backend/alembic already includes `CREATE EXTENSION IF NOT EXISTS
+# postgis`, and the backend's startCommand runs `alembic upgrade head` on every
+# start, so PostGIS and the schema are set up automatically on first deploy.
+#
+# NOTE: Render appends a random suffix to a service's URL when its name is taken
+# (e.g. darukaa-backend-1atn.onrender.com). The URLs in VITE_API_BASE_URL and
+# CORS_ORIGINS below must match the real URLs shown in the Render dashboard.
 
 databases:
   - name: darukaa-db
@@ -23,7 +23,10 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Migrations run on every start (idempotent) so the free plan, which has no
+    # Render Shell, still gets the schema and the PostGIS extension.
+    startCommand: cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -47,7 +50,7 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://darukaa-backend.onrender.com
+        value: https://darukaa-backend-1atn.onrender.com
       - key: VITE_MAPBOX_TOKEN
         sync: false
     routes:

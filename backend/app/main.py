@@ -9,6 +9,7 @@ single source of truth for schema, per ARCHITECTURE.md. Run
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.api.routers import auth, projects, sites
 from app.core.config import settings
@@ -33,6 +34,12 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(sites.router)
+
+
+# HEAD is included because Render probes the service root with HEAD.
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health", tags=["health"])
