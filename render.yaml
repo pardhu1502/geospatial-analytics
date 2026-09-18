@@ -23,9 +23,11 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt
-    # Migrations run on every start (idempotent) so the free plan, which has no
-    # Render Shell, still gets the schema and the PostGIS extension.
-    startCommand: cd backend && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Migrations and the demo-data seed run on every start (both idempotent: the
+    # seed skips if demo@darukaa.earth already exists) so the free plan, which has
+    # no Render Shell, still gets the schema, PostGIS and the demo login. A seed
+    # failure is logged but doesn't stop the API from starting.
+    startCommand: cd backend && alembic upgrade head && (python -m app.scripts.seed_data || echo "WARNING - seed failed, continuing") && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
