@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.geo import geojson_to_polygon, geom_to_geojson, polygon_area_hectares
 from app.core.security import get_current_user
+from app.core.synthetic_metrics import generate_metrics_for_site
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.site import Site
+from app.models.site_metric import SiteMetric
 from app.models.user import User
 from app.schemas.project import (
     BulkDeleteResult,
@@ -218,6 +220,14 @@ def create_site(
         area_hectares=area_hectares,
     )
     db.add(site)
+    db.flush()  # assign site.id for the metrics below
+
+    # No live remote-sensing pipeline exists for the hackathon (see README),
+    # so a freshly drawn site gets 12 months of synthetic history immediately
+    # rather than sitting empty until someone runs the seed script again.
+    for metric in generate_metrics_for_site(payload.site_type):
+        db.add(SiteMetric(site_id=site.id, **metric))
+
     db.commit()
     db.refresh(site)
 

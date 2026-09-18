@@ -161,14 +161,20 @@ def test_create_project_create_site_and_get_project_with_geojson(client: TestCli
     site_detail_resp = client.get(f"/sites/{site['id']}", headers=headers)
     assert site_detail_resp.status_code == 200
 
+    # A freshly created site gets 12 months of synthetic history immediately
+    # (no live remote-sensing pipeline exists for the hackathon; see README),
+    # so its charts aren't empty as soon as it's drawn.
     metrics_resp = client.get(f"/sites/{site['id']}/metrics", headers=headers)
     assert metrics_resp.status_code == 200
-    assert metrics_resp.json() == []  # no metrics seeded for a freshly created site
+    metrics = metrics_resp.json()
+    assert len(metrics) == 12
+    assert all(m["carbon_tons"] > 0 for m in metrics)
 
     summary_resp = client.get(f"/sites/{site['id']}/analytics/summary", headers=headers)
     assert summary_resp.status_code == 200
     summary = summary_resp.json()
-    assert summary["trend"] == "stable"
+    assert summary["trend"] in {"improving", "declining", "stable"}
+    assert summary["total_carbon_tons"] > 0
 
 
 def test_project_and_site_are_not_visible_to_other_users(client: TestClient):
