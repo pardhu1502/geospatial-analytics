@@ -52,5 +52,5 @@ services:
         sync: false
     routes:
       - type: rewrite
-        src: /*
-        dest: /index.html
+        source: /*
+        destination: /index.html
