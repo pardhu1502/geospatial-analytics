@@ -39,7 +39,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: CORS_ORIGINS
-        value: https://darukaa-frontend.onrender.com
+        value: https://darukaa-frontend-kh4z.onrender.com
       - key: PYTHON_VERSION
         value: 3.11.9
 
