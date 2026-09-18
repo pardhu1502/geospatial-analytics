@@ -48,6 +48,18 @@ def get_site(
     )
 
 
+@router.delete("/{site_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_site(
+    site_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    site = _get_owned_site(site_id, db, current_user)
+    # Metrics go with it via the ON DELETE CASCADE foreign key.
+    db.delete(site)
+    db.commit()
+
+
 @router.get("/{site_id}/metrics", response_model=list[SiteMetricOut])
 def get_site_metrics(
     site_id: int,

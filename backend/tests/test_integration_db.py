@@ -273,6 +273,61 @@ def test_delete_project_cascades_to_sites(client: TestClient):
     assert client.get(f"/sites/{site['id']}", headers=headers).status_code == 404
 
 
+def test_delete_site_removes_it_and_its_metrics_but_keeps_the_project(
+    client: TestClient,
+):
+    headers = _auth_headers(client)
+    project = client.post("/projects", json={"name": "Keep me"}, headers=headers).json()
+    site = client.post(
+        f"/projects/{project['id']}/sites",
+        json={
+            "name": "Doomed site",
+            "site_type": "carbon",
+            "geom": SAMPLE_POLYGON_GEOJSON,
+        },
+        headers=headers,
+    ).json()
+    assert client.get(f"/sites/{site['id']}/metrics", headers=headers).json()
+
+    resp = client.delete(f"/sites/{site['id']}", headers=headers)
+    assert resp.status_code == 204, resp.text
+
+    assert client.get(f"/sites/{site['id']}", headers=headers).status_code == 404
+    assert (
+        client.get(f"/sites/{site['id']}/metrics", headers=headers).status_code == 404
+    )
+
+    # The project itself and its site count are unaffected.
+    detail = client.get(f"/projects/{project['id']}", headers=headers).json()
+    assert detail["site_count"] == 0
+    assert detail["sites"] == []
+
+
+def test_cannot_delete_another_users_site(client: TestClient):
+    owner_headers = _auth_headers(client)
+    project = client.post(
+        "/projects", json={"name": "Private project"}, headers=owner_headers
+    ).json()
+    site = client.post(
+        f"/projects/{project['id']}/sites",
+        json={
+            "name": "Private site",
+            "site_type": "carbon",
+            "geom": SAMPLE_POLYGON_GEOJSON,
+        },
+        headers=owner_headers,
+    ).json()
+
+    intruder_headers = _auth_headers(client)
+    assert (
+        client.delete(f"/sites/{site['id']}", headers=intruder_headers).status_code
+        == 404
+    )
+
+    # Still intact for its real owner.
+    assert client.get(f"/sites/{site['id']}", headers=owner_headers).status_code == 200
+
+
 def test_cannot_update_or_delete_another_users_project(client: TestClient):
     owner_headers = _auth_headers(client)
     project = client.post(
