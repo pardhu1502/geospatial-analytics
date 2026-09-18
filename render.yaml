@@ -20,7 +20,7 @@ databases:
 services:
   - type: web
     name: darukaa-backend
-    env: python
+    runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -40,8 +40,9 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
 
-  - type: static
+  - type: web
     name: darukaa-frontend
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
@@ -51,5 +52,5 @@ services:
         sync: false
     routes:
       - type: rewrite
-        source: /*
-        destination: /index.html
+        src: /*
+        dest: /index.html
