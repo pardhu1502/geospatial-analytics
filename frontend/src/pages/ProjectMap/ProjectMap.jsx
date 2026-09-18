@@ -83,6 +83,7 @@ export default function ProjectMap() {
   const mapRef = useRef(null);
   const drawRef = useRef(null);
   const styleLoadedRef = useRef(false);
+  const projectRef = useRef(null);
 
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,11 @@ export default function ProjectMap() {
   const [pendingGeometry, setPendingGeometry] = useState(null);
   const [savingSite, setSavingSite] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Kept in sync on every render so the map's 'load' handler (registered
+  // once, inside an effect with [] deps) can read the *current* project
+  // instead of the null it closed over at mount time.
+  projectRef.current = project;
 
   const renderSites = (sites) => {
     const map = mapRef.current;
@@ -219,7 +225,9 @@ export default function ProjectMap() {
       });
 
       styleLoadedRef.current = true;
-      renderSites(project?.sites);
+      // Read the ref, not `project` — this closure was created once at
+      // mount time and would otherwise always see project as null.
+      renderSites(projectRef.current?.sites);
 
       map.on('click', 'sites-fill', (e) => {
         const feature = e.features && e.features[0];
